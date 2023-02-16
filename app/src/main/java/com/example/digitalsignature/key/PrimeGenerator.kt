@@ -5,58 +5,59 @@ import java.util.Random
 
 
 object PrimeGenerator {
-    private val RANDOM: Random = Random()
-    fun generatePrime(bitLength: Int): BigInteger {
-        var p: BigInteger
-        do {
-            p = BigInteger(bitLength, RANDOM)
-        } while (!isProbablePrime(p, bitLength))
-        return p
-    }
-
-    private fun isProbablePrime(n: BigInteger, bitLength: Int): Boolean {
-        if (n.compareTo(BigInteger.valueOf(2)) < 0) {
+    // The Miller-Rabin test to check if a number is probably prime
+    private fun isProbablyPrime(n: BigInteger, k: Int): Boolean {
+        if (n.compareTo(BigInteger.ONE) == 0 || n.compareTo(BigInteger.valueOf(4)) == 0) {
+            return true
+        }
+        if (n.mod(BigInteger.valueOf(2)).compareTo(BigInteger.ZERO) == 0) {
             return false
         }
-        var s = 0
+
+        // Write n - 1 as 2^r * d
         var d = n.subtract(BigInteger.ONE)
-        while (!d.testBit(0)) {
-            s++
+        var r = 0
+        while (d.mod(BigInteger.valueOf(2)).compareTo(BigInteger.ZERO) == 0) {
+            r++
             d = d.divide(BigInteger.valueOf(2))
         }
-        for (i in 0 until bitLength / 4) {
-            val a = randomInRange(BigInteger.valueOf(2), n.subtract(BigInteger.ONE))
+
+        // Test k times
+        for (i in 0 until k) {
+            val a = randomBigInteger(BigInteger.valueOf(2), n.subtract(BigInteger.valueOf(2)))
             var x = a.modPow(d, n)
-            if (x == BigInteger.ONE || x == n.subtract(BigInteger.ONE)) {
+            if (x.compareTo(BigInteger.ONE) == 0 || x.compareTo(n.subtract(BigInteger.ONE)) == 0) {
                 continue
             }
-            for (r in 0 until s) {
+            for (j in 0 until r - 1) {
                 x = x.modPow(BigInteger.valueOf(2), n)
-                if (x == BigInteger.ONE) {
+                if (x.compareTo(BigInteger.ONE) == 0) {
                     return false
                 }
-                if (x == n.subtract(BigInteger.ONE)) {
+                if (x.compareTo(n.subtract(BigInteger.ONE)) == 0) {
                     break
                 }
             }
-            if (x != n.subtract(BigInteger.ONE)) {
+            if (x.compareTo(n.subtract(BigInteger.ONE)) != 0) {
                 return false
             }
         }
         return true
     }
 
-    private fun randomInRange(min: BigInteger, max: BigInteger): BigInteger {
-        val cmp = min.compareTo(max)
-        if (cmp >= 0) {
-            return min
+    // Generate a big prime number
+    fun generatePrime(bitLength: Int): BigInteger? {
+        var prime = BigInteger.ZERO
+        val rand = Random()
+        while (!isProbablyPrime(prime, 64)) {
+            prime = BigInteger(bitLength, rand)
         }
-        val range = max.subtract(min)
-        val length = range.bitLength()
-        var result: BigInteger
-        do {
-            result = BigInteger(length, RANDOM)
-        } while (result.compareTo(range) >= 0)
-        return result.add(min)
+        return prime
     }
+
+    // A helper method to generate a random BigInteger between two values
+    private fun randomBigInteger(min: BigInteger?, max: BigInteger): BigInteger {
+        val range = max.subtract(min).add(BigInteger.ONE)
+        return BigInteger(range.bitLength(), Random()).mod(range).add(min)
+    }   
 }
